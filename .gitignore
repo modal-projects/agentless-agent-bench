@@ -225,3 +225,5 @@ __marimo__/
 results/*
 soak_logs/*
 logs/*
+
+uv.lock
