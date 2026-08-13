@@ -110,7 +110,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     platform = resolve_platform(args)
     tasks = load_tasks(args.only)
     (ROOT / "logs").mkdir(exist_ok=True)
-    results_path = Path(args.results)
+    results_path = Path(args.results) if args.results else ROOT / "results" / f"benchmark_{int(time.time())}.json"
     results_path.parent.mkdir(parents=True, exist_ok=True)
 
     results = []
@@ -215,11 +215,10 @@ def cmd_soak(args: argparse.Namespace) -> int:
     soak_dir.mkdir(exist_ok=True)
     for old in soak_dir.glob("*.tsv"):
         old.unlink()
-    results_path = Path(args.results)
-    results_path.parent.mkdir(parents=True, exist_ok=True)
-
     start = int(time.time())
     deadline = start + args.duration
+    results_path = Path(args.results) if args.results else ROOT / "results" / f"soak_{start}.json"
+    results_path.parent.mkdir(parents=True, exist_ok=True)
     label = f"soak_session={start}"
     errcon.print(
         f"soak: ncpu={args.ncpu} (cpuset {cpuset})  duration={args.duration}s  "
@@ -338,7 +337,8 @@ def main() -> int:
     p_bench = sub.add_parser("benchmark", help="run oracle solutions serially, record latency")
     common(p_bench)
     p_bench.add_argument("--network", default=os.environ.get("NETWORK", "none"))
-    p_bench.add_argument("--results", default=os.environ.get("RESULTS", "results/benchmark.json"))
+    p_bench.add_argument("--results", default=os.environ.get("RESULTS"),
+                         help="output path (default: results/benchmark_<unix ts>.json)")
     p_bench.set_defaults(fn=cmd_benchmark)
 
     p_soak = sub.add_parser("soak", help="one lane per task, cycle runs until the deadline")
@@ -347,7 +347,8 @@ def main() -> int:
     p_soak.add_argument("--ncpu", type=int, default=int(os.environ.get("NCPUS", 4)))
     p_soak.add_argument("--duration", type=int, default=int(os.environ.get("DURATION", 20)),
                         help="seconds to run")
-    p_soak.add_argument("--results", default=os.environ.get("SOAK_RESULTS", "results/soak.json"))
+    p_soak.add_argument("--results", default=os.environ.get("SOAK_RESULTS"),
+                        help="output path (default: results/soak_<unix ts>.json)")
     p_soak.set_defaults(fn=cmd_soak)
 
     args = parser.parse_args()

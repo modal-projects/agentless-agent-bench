@@ -17,14 +17,14 @@ Running this step ensures that there is no network time in the bench.
 ```bash
 uv run main.py benchmark
 ```
-Run the oracle solutions one-by-one against the locally built images. Outputs the per-task latency for all 51 tasks into `results/benchmark.json`
+Run the oracle solutions one-by-one against the locally built images. Outputs the per-task latency for all 51 tasks into `results/benchmark_<unix ts>.json`
 
 **Contented:**
 ```bash
 uv run main.py soak --ncpu 4 --duration 10
 ```
 Runs all 51 tasks concurrently, cycling as many runs as possible (including container standup/teardown) per task, within a fixed time window.
-Outputs iterations achieved into `results/soak.json`.
+Outputs iterations achieved into `results/soak_<unix ts>.json`.
 
 Args:
 - `--ncpu 8` limit pool of CPUs to 8 (default 4)
