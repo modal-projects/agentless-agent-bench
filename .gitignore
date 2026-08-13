@@ -157,6 +157,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Task build contexts live in tasks/<name>/env/ and must stay tracked
+!tasks/*/env/
+!tasks/*/env/**
+
 # Spyder project settings
 .spyderproject
 .spyproject
