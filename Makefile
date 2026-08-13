@@ -3,7 +3,7 @@ NETWORK  ?= none
 RESULTS  ?= results/benchmark.json
 
 # soak (concurrency) params
-NCPUS        ?= 8
+NCPUS        ?= 4
 DURATION     ?= 600
 SOAK_RESULTS ?= results/soak.json
 ONLY         ?=
