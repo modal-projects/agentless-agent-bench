@@ -1,0 +1,6 @@
+[project]
+name = "agentless-agent-bench"
+version = "0.1.0"
+description = "Build, benchmark, and soak-test the task images"
+requires-python = ">=3.10"
+dependencies = ["rich>=13"]
