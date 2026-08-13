@@ -4,7 +4,7 @@ RESULTS  ?= results/benchmark.json
 
 # soak (concurrency) params
 NCPUS        ?= 4
-DURATION     ?= 600
+DURATION     ?= 20
 SOAK_RESULTS ?= results/soak.json
 ONLY         ?=
 

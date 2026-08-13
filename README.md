@@ -8,7 +8,7 @@ This is built on terminal-bench-2.1 task dataset using the `oracle` solutions, w
 ```bash
 make build
 ```
-Build all the task images for the current native platform (override with `PLATFORM=linux/arm64`). 
+Build all the task images for the current native platform (override native platform by setting env var `PLATFORM=linux/arm64`). 
 
 Running this step ensures that there is no network time in the bench.
 
@@ -17,7 +17,7 @@ Running this step ensures that there is no network time in the bench.
 ```bash
 make benchmark
 ```
-Run the oracle solutions one-by-one against the locally built images. Outputs the total end-to-end latency for all 51 tasks into `results/benchmark.json`
+Run the oracle solutions one-by-one against the locally built images. Outputs the per-task latency for all 51 tasks into `results/benchmark.json`
 
 **Contented:**
 ```bash
@@ -28,4 +28,4 @@ Outputs iterations achieved into `results/soak.json`.
 
 Args:
 - `make soak NCPUS=8` limit pool of CPUs to 8s (default 4)
-- `make soak DURATION=60` limit total run to 60s (default 600s)
+- `make soak DURATION=60` limit total run to 60s (default 20s)
