@@ -30,12 +30,6 @@
     "memory_mb": 2048
   },
   {
-    "name": "custom-memory-heap-crash",
-    "image": "alexgshaw/custom-memory-heap-crash:20251031",
-    "cpus": 1,
-    "memory_mb": 2048
-  },
-  {
     "name": "db-wal-recovery",
     "image": "alexgshaw/db-wal-recovery:20251031",
     "cpus": 1,
