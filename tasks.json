@@ -1,0 +1,314 @@
+[
+  {
+    "name": "break-filter-js-from-html",
+    "image": "alexgshaw/break-filter-js-from-html:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "cancel-async-tasks",
+    "image": "alexgshaw/cancel-async-tasks:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "circuit-fibsqrt",
+    "image": "alexgshaw/circuit-fibsqrt:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "code-from-image",
+    "image": "alexgshaw/code-from-image:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "constraints-scheduling",
+    "image": "alexgshaw/constraints-scheduling:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "custom-memory-heap-crash",
+    "image": "alexgshaw/custom-memory-heap-crash:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "db-wal-recovery",
+    "image": "alexgshaw/db-wal-recovery:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "distribution-search",
+    "image": "alexgshaw/distribution-search:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "extract-elf",
+    "image": "alexgshaw/extract-elf:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "extract-moves-from-video",
+    "image": "alexgshaw/extract-moves-from-video:20260403",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "feal-differential-cryptanalysis",
+    "image": "alexgshaw/feal-differential-cryptanalysis:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "feal-linear-cryptanalysis",
+    "image": "alexgshaw/feal-linear-cryptanalysis:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "filter-js-from-html",
+    "image": "alexgshaw/filter-js-from-html:20251031",
+    "cpus": 1,
+    "memory_mb": 8192
+  },
+  {
+    "name": "fix-code-vulnerability",
+    "image": "alexgshaw/fix-code-vulnerability:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "fix-git",
+    "image": "alexgshaw/fix-git:20260403",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "fix-ocaml-gc",
+    "image": "alexgshaw/fix-ocaml-gc:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "git-leak-recovery",
+    "image": "alexgshaw/git-leak-recovery:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "git-multibranch",
+    "image": "alexgshaw/git-multibranch:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "gpt2-codegolf",
+    "image": "alexgshaw/gpt2-codegolf:20251031",
+    "cpus": 1,
+    "memory_mb": 8192
+  },
+  {
+    "name": "headless-terminal",
+    "image": "alexgshaw/headless-terminal:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "large-scale-text-editing",
+    "image": "alexgshaw/large-scale-text-editing:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "llm-inference-batching-scheduler",
+    "image": "alexgshaw/llm-inference-batching-scheduler:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "mailman",
+    "image": "alexgshaw/mailman:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "make-mips-interpreter",
+    "image": "alexgshaw/make-mips-interpreter:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "model-extraction-relu-logits",
+    "image": "alexgshaw/model-extraction-relu-logits:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "modernize-scientific-stack",
+    "image": "alexgshaw/modernize-scientific-stack:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "multi-source-data-merger",
+    "image": "alexgshaw/multi-source-data-merger:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "openssl-selfsigned-cert",
+    "image": "alexgshaw/openssl-selfsigned-cert:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "password-recovery",
+    "image": "alexgshaw/password-recovery:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "path-tracing",
+    "image": "alexgshaw/path-tracing:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "path-tracing-reverse",
+    "image": "alexgshaw/path-tracing-reverse:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "polyglot-c-py",
+    "image": "alexgshaw/polyglot-c-py:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "polyglot-rust-c",
+    "image": "alexgshaw/polyglot-rust-c:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "portfolio-optimization",
+    "image": "alexgshaw/portfolio-optimization:20251031",
+    "cpus": 1,
+    "memory_mb": 4096
+  },
+  {
+    "name": "prove-plus-comm",
+    "image": "alexgshaw/prove-plus-comm:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "pytorch-model-recovery",
+    "image": "alexgshaw/pytorch-model-recovery:20260430",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "qemu-startup",
+    "image": "alexgshaw/qemu-startup:20251031",
+    "cpus": 1,
+    "memory_mb": 4096
+  },
+  {
+    "name": "query-optimize",
+    "image": "alexgshaw/query-optimize:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "regex-chess",
+    "image": "alexgshaw/regex-chess:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "regex-log",
+    "image": "alexgshaw/regex-log:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "reshard-c4-data",
+    "image": "alexgshaw/reshard-c4-data:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "sanitize-git-repo",
+    "image": "alexgshaw/sanitize-git-repo:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "schemelike-metacircular-eval",
+    "image": "alexgshaw/schemelike-metacircular-eval:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "sparql-university",
+    "image": "alexgshaw/sparql-university:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "sqlite-db-truncate",
+    "image": "alexgshaw/sqlite-db-truncate:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "torch-pipeline-parallelism",
+    "image": "alexgshaw/torch-pipeline-parallelism:20251031",
+    "cpus": 1,
+    "memory_mb": 8192
+  },
+  {
+    "name": "torch-tensor-parallelism",
+    "image": "alexgshaw/torch-tensor-parallelism:20251031",
+    "cpus": 1,
+    "memory_mb": 8192
+  },
+  {
+    "name": "tune-mjcf",
+    "image": "alexgshaw/tune-mjcf:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "video-processing",
+    "image": "alexgshaw/video-processing:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "vulnerable-secret",
+    "image": "alexgshaw/vulnerable-secret:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "winning-avg-corewars",
+    "image": "alexgshaw/winning-avg-corewars:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  },
+  {
+    "name": "write-compressor",
+    "image": "alexgshaw/write-compressor:20251031",
+    "cpus": 1,
+    "memory_mb": 2048
+  }
+]
