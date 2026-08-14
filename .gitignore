@@ -223,7 +223,7 @@ __marimo__/
 
 # All results
 results/*
-soak_logs/*
+throughput_logs/*
 logs/*
 
 uv.lock

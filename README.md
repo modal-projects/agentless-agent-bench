@@ -15,17 +15,29 @@ Running this step ensures that there is no network time in the bench.
 ### Benchmarking
 **Serial:**
 ```bash
-uv run main.py benchmark
+uv run main.py serial
 ```
-Run the oracle solutions one-by-one against the locally built images. Outputs the per-task latency for all 51 tasks into `results/benchmark_<unix ts>.json`
+Run the oracle solutions one-by-one against the locally built images. Outputs the per-task latency for all 51 tasks into `results/serial_<unix ts>.json`
 
-**Contented:**
+**Throughput:**
 ```bash
-uv run main.py soak --ncpu 4 --duration 10
+uv run main.py throughput --ncpu 4 --duration 10
 ```
 Runs all 51 tasks concurrently, cycling as many runs as possible (including container standup/teardown) per task, within a fixed time window.
-Outputs iterations achieved into `results/soak_<unix ts>.json`.
+Outputs iterations achieved into `results/throughput_<unix ts>.json`.
 
 Args:
 - `--ncpu 8` limit pool of CPUs to 8 (default 4)
+- `--each 3` run 3 lanes (replicas) per task, e.g. 51x3=153 lanes (default 1)
 - `--duration 60` limit total run to 60s (default 20s)
+
+**Throughput ramp:**
+```bash
+uv run main.py throughput-ramp
+```
+Sweeps the throughput run from 1 core up to all cores on a light-exponential schedule, at a fixed duration per core — once per replica count from each=1 up to `--max-each`. Writes every step's summary into `results/throughput_ramp_<unix ts>.json` and plots total completed runs vs cores to `results/throughput_ramp_<unix ts>.png`, one line per replica count (legend shows concurrent container count, e.g. 51/102/153).
+
+Args:
+- `--max-each 3` sweep lanes (replicas) per task from 1 to 3 (default 3)
+- `--duration 10` seconds per step (default 10)
+- `--cooldown 2` seconds between steps (default 2)

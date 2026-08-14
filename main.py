@@ -1,7 +1,8 @@
 """
   uv run main.py build
-  uv run main.py benchmark
-  uv run main.py soak --ncpu 4 --duration 10
+  uv run main.py serial
+  uv run main.py throughput --ncpu 4 --duration 10
+  uv run main.py throughput-ramp
 """
 from __future__ import annotations
 
@@ -104,13 +105,13 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
-# ------------------------------------------------------------ benchmark
+# --------------------------------------------------------------- serial
 
-def cmd_benchmark(args: argparse.Namespace) -> int:
+def cmd_serial(args: argparse.Namespace) -> int:
     platform = resolve_platform(args)
     tasks = load_tasks(args.only)
     (ROOT / "logs").mkdir(exist_ok=True)
-    results_path = Path(args.results) if args.results else ROOT / "results" / f"benchmark_{int(time.time())}.json"
+    results_path = Path(args.results) if args.results else ROOT / "results" / f"serial_{int(time.time())}.json"
     results_path.parent.mkdir(parents=True, exist_ok=True)
 
     results = []
@@ -122,7 +123,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-        bar = progress.add_task("benchmark", total=len(tasks))
+        bar = progress.add_task("serial", total=len(tasks))
         for t in tasks:
             name = t["name"]
             progress.update(bar, description=f"[bold]{name}")
@@ -143,11 +144,11 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
                 ms = round((time.monotonic() - start) * 1000)
             results.append({"task": name, "exit_code": rc, "ms": ms})
             progress.advance(bar)
-        progress.update(bar, description="[bold]benchmark")
+        progress.update(bar, description="[bold]serial")
 
     results_path.write_text(json.dumps(results, indent=2) + "\n")
 
-    table = Table(title=f"benchmark ({platform}, network={args.network})")
+    table = Table(title=f"serial ({platform}, network={args.network})")
     table.add_column("task")
     table.add_column("exit", justify="right")
     table.add_column("ms", justify="right")
@@ -159,10 +160,25 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 1 if any(r["exit_code"] != 0 for r in results) else 0
 
 
-# ----------------------------------------------------------------- soak
+# ----------------------------------------------------------- throughput
 
-def _soak_lane(name: str, mem_mb: int, platform: str, network: str,
-               cpuset: str, label: str, deadline: float, counts: dict) -> None:
+def runnable_tasks(only: list[str] | None) -> list[dict]:
+    """load_tasks() filtered to tasks whose local/<name> image exists."""
+    tasks = []
+    for t in load_tasks(only):
+        have_image = subprocess.run(
+            ["docker", "image", "inspect", f"local/{t['name']}"],
+            stdout=DEVNULL, stderr=DEVNULL,
+        ).returncode == 0
+        if have_image:
+            tasks.append(t)
+        else:
+            errcon.print(f"skip {t['name']} (no local image)")
+    return tasks
+
+
+def _throughput_lane(name: str, mem_mb: int, platform: str, network: str,
+                     cpuset: str, label: str, deadline: float, tally: dict) -> None:
     while (now := time.time()) < deadline:
         proc = subprocess.Popen(
             [
@@ -184,67 +200,54 @@ def _soak_lane(name: str, mem_mb: int, platform: str, network: str,
             proc.wait()
             break  # deadline hit; in-flight run doesn't count either way
         if rc == 0:
-            counts[name]["completed"] += 1
+            tally["completed"] += 1
         elif time.time() < deadline:
-            counts[name]["failed"] += 1
+            tally["failed"] += 1
 
 
-def cmd_soak(args: argparse.Namespace) -> int:
-    platform = resolve_platform(args)
-    avail = os.cpu_count() or 1
-    if args.ncpu > avail:
-        errcon.print(f"--ncpu {args.ncpu} exceeds available CPUs ({avail}); pick <= {avail}")
-        return 1
-    cpuset = f"0-{args.ncpu - 1}"
-
-    tasks = []
-    for t in load_tasks(args.only):
-        have_image = subprocess.run(
-            ["docker", "image", "inspect", f"local/{t['name']}"],
-            stdout=DEVNULL, stderr=DEVNULL,
-        ).returncode == 0
-        if have_image:
-            tasks.append(t)
-        else:
-            errcon.print(f"skip {t['name']} (no local image)")
-    if not tasks:
-        errcon.print("no runnable tasks (build images first)")
-        return 1
-
-    soak_dir = ROOT / "soak_logs"
-    soak_dir.mkdir(exist_ok=True)
-    for old in soak_dir.glob("*.tsv"):
-        old.unlink()
+def run_throughput(tasks: list[dict], ncpu: int, duration: int,
+                   platform: str, network: str, title: str = "throughput",
+                   each: int = 1) -> dict:
+    """One throughput run: `each` lanes per task cycling until the deadline. Returns the summary dict."""
+    cpuset = f"0-{ncpu - 1}"
     start = int(time.time())
-    deadline = start + args.duration
-    results_path = Path(args.results) if args.results else ROOT / "results" / f"soak_{start}.json"
-    results_path.parent.mkdir(parents=True, exist_ok=True)
-    label = f"soak_session={start}"
+    deadline = start + duration
+    label = f"throughput_session={start}"
     errcon.print(
-        f"soak: ncpu={args.ncpu} (cpuset {cpuset})  duration={args.duration}s  "
-        f"platform {platform}  {len(tasks)} lanes"
+        f"throughput: ncpu={ncpu} (cpuset {cpuset})  duration={duration}s  "
+        f"platform {platform}  {len(tasks) * each} lanes"
+        + (f" ({len(tasks)} tasks x {each})" if each > 1 else "")
     )
 
-    counts = {t["name"]: {"completed": 0, "failed": 0} for t in tasks}
+    # one tally dict per lane so replicas of a task never share a counter across threads
+    lanes = [(t, {"completed": 0, "failed": 0}) for t in tasks for _ in range(each)]
     threads = [
         threading.Thread(
-            target=_soak_lane,
-            args=(t["name"], t["memory_mb"], platform, args.network, cpuset, label, deadline, counts),
+            target=_throughput_lane,
+            args=(t["name"], t["memory_mb"], platform, network, cpuset, label, deadline, tally),
             daemon=True,
         )
-        for t in tasks
+        for t, tally in lanes
     ]
 
+    def counts() -> dict:
+        agg = {t["name"]: {"completed": 0, "failed": 0} for t in tasks}
+        for t, tally in lanes:
+            agg[t["name"]]["completed"] += tally["completed"]
+            agg[t["name"]]["failed"] += tally["failed"]
+        return agg
+
     progress = Progress(
-        TextColumn("[bold]soak"),
+        TextColumn(f"[bold]{title}"),
         BarColumn(bar_width=None),
         TextColumn("{task.completed:>4.0f}/{task.total:.0f}s"),
         console=console,
     )
-    bar = progress.add_task("soak", total=args.duration)
+    bar = progress.add_task(title, total=duration)
 
     def counts_table() -> Table:
-        names = sorted(counts)
+        agg = counts()
+        names = sorted(agg)
         rows_fit = max(5, console.size.height - 8)
         ngroups = max(1, math.ceil(len(names) / rows_fit))
         nrows = math.ceil(len(names) / ngroups)
@@ -259,7 +262,7 @@ def cmd_soak(args: argparse.Namespace) -> int:
                 i = g * nrows + r
                 if i < len(names):
                     n = names[i]
-                    c = counts[n]
+                    c = agg[n]
                     fail = f"[red]{c['failed']}[/]" if c["failed"] else "[dim]0[/]"
                     cells += [n, f"[green]{c['completed']}[/]", fail]
                 else:
@@ -268,7 +271,7 @@ def cmd_soak(args: argparse.Namespace) -> int:
         return table
 
     def render() -> Group:
-        progress.update(bar, completed=min(time.time() - start, args.duration))
+        progress.update(bar, completed=min(time.time() - start, duration))
         return Group(progress, counts_table())
 
     try:
@@ -289,24 +292,50 @@ def cmd_soak(args: argparse.Namespace) -> int:
             subprocess.run(["docker", "kill", *leftover], stdout=DEVNULL, stderr=DEVNULL)
 
     elapsed = int(time.time()) - start
-
-    lines = []
-    for name in sorted(counts):
-        c = counts[name]
-        line = f"{name}\t{c['completed']}\t{c['failed']}"
-        (soak_dir / f"{name}.tsv").write_text(line + "\n")
-        lines.append(line)
-    (soak_dir / "all.tsv").write_text("\n".join(lines) + "\n" if lines else "")
-
-    per_task = [{"task": n, **counts[n]} for n in counts]
+    final = counts()
+    per_task = [{"task": n, **final[n]} for n in final]
     per_task.sort(key=lambda r: -r["completed"])
-    summary = {
-        "ncpus": args.ncpu,
+    return {
+        "ncpus": ncpu,
+        "each": each,
         "seconds": elapsed,
         "total_completed": sum(r["completed"] for r in per_task),
         "total_failed": sum(r["failed"] for r in per_task),
         "tasks": per_task,
     }
+
+
+def cmd_throughput(args: argparse.Namespace) -> int:
+    platform = resolve_platform(args)
+    avail = os.cpu_count() or 1
+    if args.ncpu > avail:
+        errcon.print(f"--ncpu {args.ncpu} exceeds available CPUs ({avail}); pick <= {avail}")
+        return 1
+    if args.each < 1:
+        errcon.print(f"--each {args.each} must be >= 1")
+        return 1
+
+    tasks = runnable_tasks(args.only)
+    if not tasks:
+        errcon.print("no runnable tasks (build images first)")
+        return 1
+
+    log_dir = ROOT / "throughput_logs"
+    log_dir.mkdir(exist_ok=True)
+    for old in log_dir.glob("*.tsv"):
+        old.unlink()
+    results_path = Path(args.results) if args.results else ROOT / "results" / f"throughput_{int(time.time())}.json"
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+
+    summary = run_throughput(tasks, args.ncpu, args.duration, platform, args.network, each=args.each)
+
+    lines = []
+    for r in sorted(summary["tasks"], key=lambda r: r["task"]):
+        line = f"{r['task']}\t{r['completed']}\t{r['failed']}"
+        (log_dir / f"{r['task']}.tsv").write_text(line + "\n")
+        lines.append(line)
+    (log_dir / "all.tsv").write_text("\n".join(lines) + "\n" if lines else "")
+
     results_path.write_text(json.dumps(summary, indent=2) + "\n")
 
     console.print(
@@ -316,6 +345,112 @@ def cmd_soak(args: argparse.Namespace) -> int:
     )
     console.print(f"wrote {results_path}")
     return 0
+
+
+# ------------------------------------------------------ throughput-ramp
+
+def ramp_schedule(nproc: int) -> list[int]:
+    """Light-exponential core counts from 1 to nproc, always ending at nproc."""
+    steps = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 26, 32]
+    while steps[-1] < nproc:
+        steps.append(math.ceil(steps[-1] * 1.25))
+    steps = [s for s in steps if s <= nproc]
+    if steps[-1] != nproc:
+        steps.append(nproc)
+    return steps
+
+
+def _ramp_plot(steps: list[dict], duration: int, path: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    sns.set_theme(palette="colorblind")
+    fig, ax = plt.subplots()
+    for each in sorted({s["each"] for s in steps}):
+        line = [s for s in steps if s["each"] == each]
+        lanes = len(line[0]["tasks"]) * each
+        sns.lineplot(
+            x=[s["ncpus"] for s in line],
+            y=[s["total_completed"] for s in line],
+            marker="o", linewidth=2, markersize=8,
+            label=f"{lanes} concurrent containers", ax=ax,
+        )
+    ax.set_xticks(sorted({s["ncpus"] for s in steps}))
+    ax.set_ylim(0, max(max(s["total_completed"] for s in steps), 1) * 1.1)
+    ax.set_xlabel("cores (cpuset size)")
+    ax.set_ylabel(f"runs completed in {duration}s")
+    ax.set_title("throughput ramp")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+def cmd_throughput_ramp(args: argparse.Namespace) -> int:
+    platform = resolve_platform(args)
+    nproc = os.cpu_count() or 1
+    schedule = ramp_schedule(nproc)
+    if args.max_each < 1:
+        errcon.print(f"--max-each {args.max_each} must be >= 1")
+        return 1
+
+    tasks = runnable_tasks(args.only)
+    if not tasks:
+        errcon.print("no runnable tasks (build images first)")
+        return 1
+
+    results_path = Path(args.results) if args.results else ROOT / "results" / f"throughput_ramp_{int(time.time())}.json"
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    errcon.print(
+        f"ramp: {len(schedule)} cpu steps {schedule} x each=1..{args.max_each}  "
+        f"duration={args.duration}s/step  platform {platform}"
+    )
+
+    plan = [(e, n) for e in range(1, args.max_each + 1) for n in schedule]
+    steps: list[dict] = []
+    interrupted = False
+    try:
+        for i, (e, n) in enumerate(plan):
+            errcon.print(f"ramp step {i + 1}/{len(plan)}: ncpu={n} each={e}")
+            steps.append(run_throughput(tasks, n, args.duration, platform, args.network,
+                                        title=f"ncpu={n} each={e}", each=e))
+            if i < len(plan) - 1:
+                time.sleep(args.cooldown)
+    except KeyboardInterrupt:
+        interrupted = True
+        errcon.print("interrupted — writing completed steps")
+
+    if not steps:
+        return 130 if interrupted else 1
+
+    ramp = {
+        "nproc": nproc,
+        "max_each": args.max_each,
+        "duration": args.duration,
+        "cooldown": args.cooldown,
+        "platform": platform,
+        "network": args.network,
+        "interrupted": interrupted,
+        "schedule": schedule,
+        "steps": steps,
+    }
+    results_path.write_text(json.dumps(ramp, indent=2) + "\n")
+
+    table = Table(title=f"throughput ramp ({platform}, {args.duration}s/step)")
+    table.add_column("each", justify="right")
+    table.add_column("ncpu", justify="right")
+    table.add_column("completed", justify="right")
+    table.add_column("failed", justify="right")
+    for s in steps:
+        table.add_row(str(s["each"]), str(s["ncpus"]),
+                      f"[green]{s['total_completed']}[/]", f"[red]{s['total_failed']}[/]")
+    console.print(table)
+
+    plot_path = results_path.with_suffix(".png")
+    _ramp_plot(steps, args.duration, plot_path)
+    console.print(f"wrote {results_path}")
+    console.print(f"wrote {plot_path}")
+    return 130 if interrupted else 0
 
 
 # ----------------------------------------------------------------- main
@@ -334,22 +469,37 @@ def main() -> int:
     common(p_build)
     p_build.set_defaults(fn=cmd_build)
 
-    p_bench = sub.add_parser("benchmark", help="run oracle solutions serially, record latency")
-    common(p_bench)
-    p_bench.add_argument("--network", default=os.environ.get("NETWORK", "none"))
-    p_bench.add_argument("--results", default=os.environ.get("RESULTS"),
-                         help="output path (default: results/benchmark_<unix ts>.json)")
-    p_bench.set_defaults(fn=cmd_benchmark)
+    p_serial = sub.add_parser("serial", help="run oracle solutions serially, record latency")
+    common(p_serial)
+    p_serial.add_argument("--network", default=os.environ.get("NETWORK", "none"))
+    p_serial.add_argument("--results", default=os.environ.get("SERIAL_RESULTS"),
+                          help="output path (default: results/serial_<unix ts>.json)")
+    p_serial.set_defaults(fn=cmd_serial)
 
-    p_soak = sub.add_parser("soak", help="one lane per task, cycle runs until the deadline")
-    common(p_soak)
-    p_soak.add_argument("--network", default=os.environ.get("NETWORK", "none"))
-    p_soak.add_argument("--ncpu", type=int, default=int(os.environ.get("NCPUS", 4)))
-    p_soak.add_argument("--duration", type=int, default=int(os.environ.get("DURATION", 20)),
+    p_tput = sub.add_parser("throughput", help="one lane per task, cycle runs until the deadline")
+    common(p_tput)
+    p_tput.add_argument("--network", default=os.environ.get("NETWORK", "none"))
+    p_tput.add_argument("--ncpu", type=int, default=int(os.environ.get("NCPUS", 4)))
+    p_tput.add_argument("--each", type=int, default=int(os.environ.get("EACH", 1)),
+                        help="lanes (replicas) per task")
+    p_tput.add_argument("--duration", type=int, default=int(os.environ.get("DURATION", 20)),
                         help="seconds to run")
-    p_soak.add_argument("--results", default=os.environ.get("SOAK_RESULTS"),
-                        help="output path (default: results/soak_<unix ts>.json)")
-    p_soak.set_defaults(fn=cmd_soak)
+    p_tput.add_argument("--results", default=os.environ.get("THROUGHPUT_RESULTS"),
+                        help="output path (default: results/throughput_<unix ts>.json)")
+    p_tput.set_defaults(fn=cmd_throughput)
+
+    p_ramp = sub.add_parser("throughput-ramp", help="throughput at ramping ncpu (1..nproc), plot completed vs cores")
+    common(p_ramp)
+    p_ramp.add_argument("--network", default=os.environ.get("NETWORK", "none"))
+    p_ramp.add_argument("--max-each", type=int, default=int(os.environ.get("RAMP_MAX_EACH", 3)),
+                        help="sweep each=1..N lanes per task, one plot line per value")
+    p_ramp.add_argument("--duration", type=int, default=int(os.environ.get("RAMP_DURATION", 10)),
+                        help="seconds per step")
+    p_ramp.add_argument("--cooldown", type=int, default=int(os.environ.get("RAMP_COOLDOWN", 2)),
+                        help="seconds between steps")
+    p_ramp.add_argument("--results", default=os.environ.get("RAMP_RESULTS"),
+                        help="output path (default: results/throughput_ramp_<unix ts>.json)")
+    p_ramp.set_defaults(fn=cmd_throughput_ramp)
 
     args = parser.parse_args()
     return args.fn(args)
