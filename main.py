@@ -130,9 +130,7 @@ def reset_script(task: dict) -> str:
     return "\n".join(lines)
 
 
-# post-window cleanup: only reap stray processes. No fs restore here — every
-# solve (throughput iteration or serial run) restores state before running,
-# so restoring at window end would just repeat the most expensive resets.
+# post-window cleanup: only reap stray processes.
 KILL_STRAYS = "kill -9 -- -1 2>/dev/null; true"
 
 
@@ -203,10 +201,7 @@ def cmd_warm(args: argparse.Namespace) -> int:
         errcon.print("[red]compose up failed[/] (missing images? run: uv run main.py build)")
         return rc
 
-    # snapshot each container's pristine state; skip if a baseline already
-    # exists, so re-running warm on a used pool never captures dirty state.
-    # reset_paths outside the workdir go into a second tar — only those that
-    # exist at warm time (absent ones are restored by rm -rf alone).
+    # snapshot each container's state
     tasks = {t["name"]: t for t in load_tasks()}
     cmds = []
     for name, ctrs in sorted(discover_pool().items()):
@@ -217,6 +212,7 @@ def cmd_warm(args: argparse.Namespace) -> int:
             f'tar -cpf {BASELINE} -C "$PWD" . || exit 1',
         ]
         if paths := tasks[name].get("reset_paths"):
+            # reset_paths outside the workdir (only a subset of tasks) go into a second tar
             script += [
                 'ex=""',
                 f'for p in {" ".join(paths)}; do if [ -e "$p" ]; then ex="$ex ${{p#/}}"; fi; done',
@@ -316,7 +312,7 @@ def cmd_serial(args: argparse.Namespace) -> int:
 
 # ----------------------------------------------------------- throughput
 
-def _throughput_lane(task: dict, ctr: str, deadline: float, tally: dict) -> None:
+def _throughput_replica(task: dict, ctr: str, deadline: float, tally: dict) -> None:
     # one iteration = reset (rc 99 on failure), then solve capped at the window
     # deadline by an in-container timeout (a docker exec can't be killed from
     # outside). Deadline checks bracket the reset so a slow reset (wipe + untar
@@ -351,12 +347,12 @@ def _throughput_lane(task: dict, ctr: str, deadline: float, tally: dict) -> None
             break  # cut off by the in-container timeout at the deadline
         elif rc == 99:
             if reset_failed:
-                errcon.print(f"[red]{task['name']}: reset keeps failing on {ctr}; abandoning lane[/]")
+                errcon.print(f"[red]{task['name']}: reset keeps failing on {ctr}; abandoning replica[/]")
                 break
             reset_failed = True
             subprocess.run(["docker", "restart", "-t", "0", ctr], stdout=DEVNULL, stderr=DEVNULL)
         elif rc in (125, 126, 127):
-            errcon.print(f"[red]{task['name']}: docker exec error (exit {rc}) on {ctr}; abandoning lane[/]")
+            errcon.print(f"[red]{task['name']}: docker exec error (exit {rc}) on {ctr}; abandoning replica[/]")
             break
         elif time.time() < deadline:
             tally["failed"] += 1
@@ -364,27 +360,27 @@ def _throughput_lane(task: dict, ctr: str, deadline: float, tally: dict) -> None
 
 def run_throughput(tasks: list[dict], pool: dict[str, list[str]], ncpu: int,
                    duration: int, title: str = "throughput", each: int = 1) -> dict:
-    """One throughput run: `each` lanes per task cycling until the deadline. Returns the summary dict."""
+    """One throughput run: `each` replicas per task cycling until the deadline. Returns the summary dict."""
     cpuset = f"0-{ncpu - 1}"
-    # one container and tally per lane so replicas never share state across threads
-    lanes = [(t, pool[t["name"]][i], {"completed": 0, "failed": 0}) for t in tasks for i in range(each)]
-    docker_update([c for _, c, _ in lanes], cpuset, -1)
+    # one container and tally per replica so replicas never share state across threads
+    replicas = [(t, pool[t["name"]][i], {"completed": 0, "failed": 0}) for t in tasks for i in range(each)]
+    docker_update([c for _, c, _ in replicas], cpuset, -1)
     start = int(time.time())
     deadline = start + duration
     errcon.print(
         f"throughput: ncpu={ncpu} (cpuset {cpuset})  duration={duration}s  "
-        f"{len(lanes)} lanes"
+        f"{len(replicas)} replicas"
         + (f" ({len(tasks)} tasks x {each})" if each > 1 else "")
     )
 
     threads = [
-        threading.Thread(target=_throughput_lane, args=(t, ctr, deadline, tally), daemon=True)
-        for t, ctr, tally in lanes
+        threading.Thread(target=_throughput_replica, args=(t, ctr, deadline, tally), daemon=True)
+        for t, ctr, tally in replicas
     ]
 
     def counts() -> dict:
         agg = {t["name"]: {"completed": 0, "failed": 0} for t in tasks}
-        for t, _, tally in lanes:
+        for t, _, tally in replicas:
             agg[t["name"]]["completed"] += tally["completed"]
             agg[t["name"]]["failed"] += tally["failed"]
         return agg
@@ -439,7 +435,7 @@ def run_throughput(tasks: list[dict], pool: dict[str, list[str]], ncpu: int,
         procs = [
             (ctr, subprocess.Popen(["docker", "exec", ctr, "bash", "-c", KILL_STRAYS],
                                    stdout=DEVNULL, stderr=DEVNULL))
-            for _, ctr, _ in lanes
+            for _, ctr, _ in replicas
         ]
         for ctr, p in procs:
             if p.wait() != 0:
@@ -576,12 +572,12 @@ def cmd_throughput_ramp(args: argparse.Namespace) -> int:
     fig, ax = plt.subplots()
     for each in sorted({s["each"] for s in steps}):
         line = [s for s in steps if s["each"] == each]
-        lanes = len(line[0]["tasks"]) * each
+        replicas = len(line[0]["tasks"]) * each
         sns.lineplot(
             x=[s["ncpus"] for s in line],
             y=[s["total_completed"] for s in line],
             marker="o", linewidth=2, markersize=8,
-            label=f"{lanes} concurrent containers", ax=ax,
+            label=f"{replicas} concurrent containers", ax=ax,
         )
     ax.set_xticks(sorted({s["ncpus"] for s in steps}))
     ax.set_ylim(0, max(max(s["total_completed"] for s in steps), 1) * 1.1)
@@ -615,7 +611,7 @@ def main() -> int:
 
     p_warm = sub.add_parser("warm", help="stand up the warm container pool (docker compose) and snapshot baselines")
     p_warm.add_argument("--each", type=int, default=int(os.environ.get("WARM_EACH", 1)),
-                        help="replicas per task (throughput lanes need one each)")
+                        help="replicas per task (throughput replicas need one each)")
     p_warm.add_argument("--recreate", action="store_true",
                         help="force-recreate the containers (fresh baselines)")
     p_warm.add_argument("--down", action="store_true", help="tear the pool down instead")
@@ -627,11 +623,11 @@ def main() -> int:
                           help="output path (default: results/serial_<unix ts>.json)")
     p_serial.set_defaults(fn=cmd_serial)
 
-    p_tput = sub.add_parser("throughput", help="one lane per warm container, cycle runs until the deadline")
+    p_tput = sub.add_parser("throughput", help="one replica per warm container, cycle runs until the deadline")
     common(p_tput)
     p_tput.add_argument("--ncpu", type=int, default=int(os.environ.get("NCPUS", 4)))
     p_tput.add_argument("--each", type=int, default=int(os.environ.get("EACH", 1)),
-                        help="lanes (replicas) per task")
+                        help="replicas (replicas) per task")
     p_tput.add_argument("--duration", type=int, default=int(os.environ.get("DURATION", 20)),
                         help="seconds to run")
     p_tput.add_argument("--results", default=os.environ.get("THROUGHPUT_RESULTS"),
@@ -641,7 +637,7 @@ def main() -> int:
     p_ramp = sub.add_parser("throughput-ramp", help="throughput at ramping ncpu (1..nproc), plot completed vs cores")
     common(p_ramp)
     p_ramp.add_argument("--max-each", type=int, default=int(os.environ.get("RAMP_MAX_EACH", 3)),
-                        help="sweep each=1..N lanes per task, one plot line per value")
+                        help="sweep each=1..N replicas per task, one plot line per value")
     p_ramp.add_argument("--duration", type=int, default=int(os.environ.get("RAMP_DURATION", 10)),
                         help="seconds per step")
     p_ramp.add_argument("--cooldown", type=int, default=int(os.environ.get("RAMP_COOLDOWN", 2)),
