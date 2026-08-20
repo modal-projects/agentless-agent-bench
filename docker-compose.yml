@@ -1,0 +1,271 @@
+# Warm pool for the benchmark: one long-lived container per task (x $WARM_EACH replicas),
+# stood up/torn down via `uv run main.py warm [--each N] [--down]`.
+name: agentless-bench
+
+x-defaults: &defaults
+  pull_policy: never          # only locally built images, never a registry
+  # PID 1 must survive the reset's in-container kill-all (namespace init is
+  # immune) AND reap the corpses of daemons solve.sh leaves behind, else
+  # zombies pile up across iterations — hence a reaping loop, not bare sleep.
+  command: ["sh", "-c", "while :; do sleep 2073600 & wait; done"]
+  stop_signal: SIGKILL        # PID-1 sh ignores TERM; keeps `down` fast
+  network_mode: none
+  deploy:
+    replicas: ${WARM_EACH:-1}
+
+services:
+  break-filter-js-from-html:
+    <<: *defaults
+    image: local/break-filter-js-from-html
+    mem_limit: 2048m
+    volumes: ["./tasks/break-filter-js-from-html:/solution:ro"]
+  cancel-async-tasks:
+    <<: *defaults
+    image: local/cancel-async-tasks
+    mem_limit: 2048m
+    volumes: ["./tasks/cancel-async-tasks:/solution:ro"]
+  circuit-fibsqrt:
+    <<: *defaults
+    image: local/circuit-fibsqrt
+    mem_limit: 2048m
+    volumes: ["./tasks/circuit-fibsqrt:/solution:ro"]
+  code-from-image:
+    <<: *defaults
+    image: local/code-from-image
+    mem_limit: 2048m
+    volumes: ["./tasks/code-from-image:/solution:ro"]
+  constraints-scheduling:
+    <<: *defaults
+    image: local/constraints-scheduling
+    mem_limit: 2048m
+    volumes: ["./tasks/constraints-scheduling:/solution:ro"]
+  db-wal-recovery:
+    <<: *defaults
+    image: local/db-wal-recovery
+    mem_limit: 2048m
+    volumes: ["./tasks/db-wal-recovery:/solution:ro"]
+  distribution-search:
+    <<: *defaults
+    image: local/distribution-search
+    mem_limit: 2048m
+    volumes: ["./tasks/distribution-search:/solution:ro"]
+  extract-elf:
+    <<: *defaults
+    image: local/extract-elf
+    mem_limit: 2048m
+    volumes: ["./tasks/extract-elf:/solution:ro"]
+  extract-moves-from-video:
+    <<: *defaults
+    image: local/extract-moves-from-video
+    mem_limit: 2048m
+    volumes: ["./tasks/extract-moves-from-video:/solution:ro"]
+  feal-differential-cryptanalysis:
+    <<: *defaults
+    image: local/feal-differential-cryptanalysis
+    mem_limit: 2048m
+    volumes: ["./tasks/feal-differential-cryptanalysis:/solution:ro"]
+  feal-linear-cryptanalysis:
+    <<: *defaults
+    image: local/feal-linear-cryptanalysis
+    mem_limit: 2048m
+    volumes: ["./tasks/feal-linear-cryptanalysis:/solution:ro"]
+  filter-js-from-html:
+    <<: *defaults
+    image: local/filter-js-from-html
+    mem_limit: 8192m
+    volumes: ["./tasks/filter-js-from-html:/solution:ro"]
+  fix-code-vulnerability:
+    <<: *defaults
+    image: local/fix-code-vulnerability
+    mem_limit: 2048m
+    volumes: ["./tasks/fix-code-vulnerability:/solution:ro"]
+  fix-git:
+    <<: *defaults
+    image: local/fix-git
+    mem_limit: 2048m
+    volumes: ["./tasks/fix-git:/solution:ro"]
+  fix-ocaml-gc:
+    <<: *defaults
+    image: local/fix-ocaml-gc
+    mem_limit: 2048m
+    volumes: ["./tasks/fix-ocaml-gc:/solution:ro"]
+  git-leak-recovery:
+    <<: *defaults
+    image: local/git-leak-recovery
+    mem_limit: 2048m
+    volumes: ["./tasks/git-leak-recovery:/solution:ro"]
+  git-multibranch:
+    <<: *defaults
+    image: local/git-multibranch
+    mem_limit: 2048m
+    volumes: ["./tasks/git-multibranch:/solution:ro"]
+  gpt2-codegolf:
+    <<: *defaults
+    image: local/gpt2-codegolf
+    mem_limit: 8192m
+    volumes: ["./tasks/gpt2-codegolf:/solution:ro"]
+  headless-terminal:
+    <<: *defaults
+    image: local/headless-terminal
+    mem_limit: 2048m
+    volumes: ["./tasks/headless-terminal:/solution:ro"]
+  large-scale-text-editing:
+    <<: *defaults
+    image: local/large-scale-text-editing
+    mem_limit: 2048m
+    volumes: ["./tasks/large-scale-text-editing:/solution:ro"]
+  llm-inference-batching-scheduler:
+    <<: *defaults
+    image: local/llm-inference-batching-scheduler
+    mem_limit: 2048m
+    volumes: ["./tasks/llm-inference-batching-scheduler:/solution:ro"]
+  mailman:
+    <<: *defaults
+    image: local/mailman
+    mem_limit: 2048m
+    volumes: ["./tasks/mailman:/solution:ro"]
+  make-mips-interpreter:
+    <<: *defaults
+    image: local/make-mips-interpreter
+    mem_limit: 2048m
+    volumes: ["./tasks/make-mips-interpreter:/solution:ro"]
+  model-extraction-relu-logits:
+    <<: *defaults
+    image: local/model-extraction-relu-logits
+    mem_limit: 2048m
+    volumes: ["./tasks/model-extraction-relu-logits:/solution:ro"]
+  modernize-scientific-stack:
+    <<: *defaults
+    image: local/modernize-scientific-stack
+    mem_limit: 2048m
+    volumes: ["./tasks/modernize-scientific-stack:/solution:ro"]
+  multi-source-data-merger:
+    <<: *defaults
+    image: local/multi-source-data-merger
+    mem_limit: 2048m
+    volumes: ["./tasks/multi-source-data-merger:/solution:ro"]
+  openssl-selfsigned-cert:
+    <<: *defaults
+    image: local/openssl-selfsigned-cert
+    mem_limit: 2048m
+    volumes: ["./tasks/openssl-selfsigned-cert:/solution:ro"]
+  password-recovery:
+    <<: *defaults
+    image: local/password-recovery
+    mem_limit: 2048m
+    volumes: ["./tasks/password-recovery:/solution:ro"]
+  path-tracing:
+    <<: *defaults
+    image: local/path-tracing
+    mem_limit: 2048m
+    volumes: ["./tasks/path-tracing:/solution:ro"]
+  path-tracing-reverse:
+    <<: *defaults
+    image: local/path-tracing-reverse
+    mem_limit: 2048m
+    volumes: ["./tasks/path-tracing-reverse:/solution:ro"]
+  polyglot-c-py:
+    <<: *defaults
+    image: local/polyglot-c-py
+    mem_limit: 2048m
+    volumes: ["./tasks/polyglot-c-py:/solution:ro"]
+  polyglot-rust-c:
+    <<: *defaults
+    image: local/polyglot-rust-c
+    mem_limit: 2048m
+    volumes: ["./tasks/polyglot-rust-c:/solution:ro"]
+  portfolio-optimization:
+    <<: *defaults
+    image: local/portfolio-optimization
+    mem_limit: 4096m
+    volumes: ["./tasks/portfolio-optimization:/solution:ro"]
+  prove-plus-comm:
+    <<: *defaults
+    image: local/prove-plus-comm
+    mem_limit: 2048m
+    volumes: ["./tasks/prove-plus-comm:/solution:ro"]
+  pytorch-model-recovery:
+    <<: *defaults
+    image: local/pytorch-model-recovery
+    mem_limit: 2048m
+    volumes: ["./tasks/pytorch-model-recovery:/solution:ro"]
+  qemu-startup:
+    <<: *defaults
+    image: local/qemu-startup
+    mem_limit: 4096m
+    volumes: ["./tasks/qemu-startup:/solution:ro"]
+  query-optimize:
+    <<: *defaults
+    image: local/query-optimize
+    mem_limit: 2048m
+    volumes: ["./tasks/query-optimize:/solution:ro"]
+  regex-chess:
+    <<: *defaults
+    image: local/regex-chess
+    mem_limit: 2048m
+    volumes: ["./tasks/regex-chess:/solution:ro"]
+  regex-log:
+    <<: *defaults
+    image: local/regex-log
+    mem_limit: 2048m
+    volumes: ["./tasks/regex-log:/solution:ro"]
+  reshard-c4-data:
+    <<: *defaults
+    image: local/reshard-c4-data
+    mem_limit: 2048m
+    volumes: ["./tasks/reshard-c4-data:/solution:ro"]
+  sanitize-git-repo:
+    <<: *defaults
+    image: local/sanitize-git-repo
+    mem_limit: 2048m
+    volumes: ["./tasks/sanitize-git-repo:/solution:ro"]
+  schemelike-metacircular-eval:
+    <<: *defaults
+    image: local/schemelike-metacircular-eval
+    mem_limit: 2048m
+    volumes: ["./tasks/schemelike-metacircular-eval:/solution:ro"]
+  sparql-university:
+    <<: *defaults
+    image: local/sparql-university
+    mem_limit: 2048m
+    volumes: ["./tasks/sparql-university:/solution:ro"]
+  sqlite-db-truncate:
+    <<: *defaults
+    image: local/sqlite-db-truncate
+    mem_limit: 2048m
+    volumes: ["./tasks/sqlite-db-truncate:/solution:ro"]
+  torch-pipeline-parallelism:
+    <<: *defaults
+    image: local/torch-pipeline-parallelism
+    mem_limit: 8192m
+    volumes: ["./tasks/torch-pipeline-parallelism:/solution:ro"]
+  torch-tensor-parallelism:
+    <<: *defaults
+    image: local/torch-tensor-parallelism
+    mem_limit: 8192m
+    volumes: ["./tasks/torch-tensor-parallelism:/solution:ro"]
+  tune-mjcf:
+    <<: *defaults
+    image: local/tune-mjcf
+    mem_limit: 2048m
+    volumes: ["./tasks/tune-mjcf:/solution:ro"]
+  video-processing:
+    <<: *defaults
+    image: local/video-processing
+    mem_limit: 2048m
+    volumes: ["./tasks/video-processing:/solution:ro"]
+  vulnerable-secret:
+    <<: *defaults
+    image: local/vulnerable-secret
+    mem_limit: 2048m
+    volumes: ["./tasks/vulnerable-secret:/solution:ro"]
+  winning-avg-corewars:
+    <<: *defaults
+    image: local/winning-avg-corewars
+    mem_limit: 2048m
+    volumes: ["./tasks/winning-avg-corewars:/solution:ro"]
+  write-compressor:
+    <<: *defaults
+    image: local/write-compressor
+    mem_limit: 2048m
+    volumes: ["./tasks/write-compressor:/solution:ro"]

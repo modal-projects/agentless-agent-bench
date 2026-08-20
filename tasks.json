@@ -129,7 +129,16 @@
     "name": "mailman",
     "image": "alexgshaw/mailman:20251031",
     "cpus": 1,
-    "memory_mb": 2048
+    "memory_mb": 2048,
+    "reset_paths": [
+      "/etc/mailman3",
+      "/var/lib/mailman3",
+      "/var/lib/mailman",
+      "/var/log/mailman",
+      "/var/spool/mailman",
+      "/var/lock/mailman",
+      "/var/run/mailman"
+    ]
   },
   {
     "name": "make-mips-interpreter",
