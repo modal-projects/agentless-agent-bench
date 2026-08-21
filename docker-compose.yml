@@ -84,11 +84,6 @@ services:
     image: local/fix-git
     mem_limit: 2048m
     volumes: ["./tasks/fix-git:/solution:ro"]
-  fix-ocaml-gc:
-    <<: *defaults
-    image: local/fix-ocaml-gc
-    mem_limit: 2048m
-    volumes: ["./tasks/fix-ocaml-gc:/solution:ro"]
   git-leak-recovery:
     <<: *defaults
     image: local/git-leak-recovery

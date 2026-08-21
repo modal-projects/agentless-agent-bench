@@ -11,3 +11,9 @@ RUN wget -q https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-e
 RUN qemu-img create -f qcow2 /app/alpine-disk.qcow2 32G
 RUN apt update -y
 RUN apt install -y telnet netcat expect tmux asciinema
+
+# ---- terminal-bench 2.1 verifier (baked, offline) ----
+RUN apt-get update && apt-get install -y --no-install-recommends expect && rm -rf /var/lib/apt/lists/*
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /usr/local/bin/tb-uv
+RUN tb-uv venv -p 3.13 /opt/verifier && tb-uv pip install -p /opt/verifier/bin/python pytest==8.4.1 pytest-json-ctrf==0.3.5
+COPY tests /tests

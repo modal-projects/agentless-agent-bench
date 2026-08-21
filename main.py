@@ -134,10 +134,10 @@ def reset_script(task: dict) -> str:
 KILL_STRAYS = "kill -9 -- -1 2>/dev/null; true"
 
 
-# solve.sh timed inside the container
-# to not measure the 30-60ms docker exec client overhead
+# solve.sh + its terminal-bench verifier (baked into the image at /tests),
+# timed inside the container to not measure the 30-60ms docker exec client overhead
 SOLVE_TIMED = """t0=$(date +%s%N)
-bash /solution/solve.sh
+bash /solution/solve.sh && bash /tests/test.sh
 rc=$?
 t1=$(date +%s%N)
 printf '\\n@@BENCH_MS %s\\n' $(( (t1 - t0) / 1000000 ))
@@ -313,17 +313,18 @@ def cmd_serial(args: argparse.Namespace) -> int:
 # ----------------------------------------------------------- throughput
 
 def _throughput_replica(task: dict, ctr: str, deadline: float, tally: dict) -> None:
-    # one iteration = reset (rc 99 on failure), then solve capped at the window
-    # deadline by an in-container timeout (a docker exec can't be killed from
-    # outside). Deadline checks bracket the reset so a slow reset (wipe + untar
-    # of a large workdir) is never started for a window that is already over.
+    # one iteration = reset (rc 99 on failure), then solve + verifier capped at
+    # the window deadline by an in-container timeout (a docker exec can't be
+    # killed from outside). Deadline checks bracket the reset so a slow reset
+    # (wipe + untar of a large workdir) is never started for a window that is
+    # already over.
     dl = int(deadline)
     script = "\n".join([
         f"if [ $(date +%s) -ge {dl} ]; then exit 124; fi",
         reset_script(task) + " || exit 99",
         f"rem=$(( {dl} - $(date +%s) ))",
         'if [ "$rem" -le 0 ]; then exit 124; fi',
-        'exec timeout -s KILL "$rem" bash /solution/solve.sh',
+        "exec timeout -s KILL \"$rem\" bash -c 'bash /solution/solve.sh && bash /tests/test.sh'",
     ])
     reset_failed = False
     while (now := time.time()) < deadline:

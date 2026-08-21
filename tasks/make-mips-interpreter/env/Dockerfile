@@ -14,4 +14,11 @@ RUN git clone -o origin --single-branch https://github.com/ozkl/doomgeneric && \
 COPY task-deps/mips.patch /tmp
 RUN cd doomgeneric && git apply /tmp/mips.patch
 RUN cd doomgeneric/doomgeneric && make all && cp doomgeneric_mips ../..
-RUN curl https://distro.ibiblio.org/slitaz/sources/packages/d/doom1.wad > doom.wad
+# upstream's ibiblio mirror is dead (and its unchecked curl baked an XML error
+# page as doom.wad); -f makes a bad fetch fail the build instead
+RUN curl -fsSL https://www.libsdl.org/projects/doom/data/doom1.wad.gz | gunzip > doom.wad
+
+# ---- terminal-bench 2.1 verifier (baked, offline) ----
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /usr/local/bin/tb-uv
+RUN tb-uv venv -p 3.13 /opt/verifier && tb-uv pip install -p /opt/verifier/bin/python pytest==8.4.1 numpy==2.3.1 pillow==11.2.1 pytest-json-ctrf==0.3.5
+COPY tests /tests

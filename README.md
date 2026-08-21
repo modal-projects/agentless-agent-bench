@@ -2,7 +2,9 @@
 
 Benchmark script for testing host perf for "agentic workloads" by emulating agent terminal behavior with network stubbed out.
 
-This is built on terminal-bench-2.1 task dataset using the `oracle` solutions, which remove LLM-turn latency. This is then filtered down to 51 oracle solutions which use no network. The dockerfiles are then ported to be arm compatible. The environments may then be built in advance of the benchmark.
+This is built on terminal-bench-2.1 task dataset using the `oracle` solutions, which remove LLM-turn latency. This is then filtered down to 50 oracle solutions which use no network. The dockerfiles are then ported to be arm compatible. The environments may then be built in advance of the benchmark.
+
+Every benchmark run executes the task's terminal-bench 2.1 verifier right after `solve.sh`; a run only counts as completed if the verifier passes. The verifiers are vendored into `tasks/<name>/env/tests/` with their python deps baked into the image at build time (`/opt/verifier` venv), so verification adds no network IO.
 
 ### Preparation
 ```bash
@@ -23,17 +25,17 @@ Use `--recreate` for a fresh pool and `--down` to tear it down.
 ```bash
 uv run main.py serial
 ```
-Run the oracle solutions one-by-one in the warm pool. Outputs the per-task latency for all 51 tasks into `results/serial_<unix ts>.json`. **Throughput:**
+Run the oracle solutions (each followed by its verifier) one-by-one in the warm pool. Outputs the per-task latency for all 50 tasks into `results/serial_<unix ts>.json`. **Throughput:**
 
 ```bash
 uv run main.py throughput --ncpu 4 --duration 10
 ```
-Runs all 51 tasks concurrently, cycling as many solve runs as possible per task (each preceded by an in-container snapshot reset) within a fixed time window.
+Runs all 50 tasks concurrently, cycling as many solve+verify runs as possible per task (each preceded by an in-container snapshot reset) within a fixed time window.
 Outputs iterations achieved into `results/throughput_<unix ts>.json`.
 
 Args:
 - `--ncpu 8` limit pool of CPUs to 8 (default 4)
-- `--each 3` run 3 replicas per task, e.g. 51x3=153 lanes
+- `--each 3` run 3 replicas per task, e.g. 50x3=150 lanes
 - `--duration 60` limit total run to 60s (default 20s)
 
 **Throughput ramp:**

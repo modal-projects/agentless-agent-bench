@@ -18,3 +18,8 @@ RUN pip install --no-cache-dir \
     matplotlib==3.10.6 \
     scipy==1.16.1
 COPY climate_analyzer/ /app/climate_analyzer/
+
+# ---- terminal-bench 2.1 verifier (baked, offline) ----
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /usr/local/bin/tb-uv
+RUN tb-uv venv -p 3.13 /opt/verifier && tb-uv pip install -p /opt/verifier/bin/python pytest==8.4.1 numpy==2.3.4 pandas==2.3.3 matplotlib==3.10.7 scipy==1.16.3 pytest-json-ctrf==0.3.5
+COPY tests /tests
