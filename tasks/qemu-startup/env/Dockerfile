@@ -1,4 +1,6 @@
 FROM debian:bullseye
+# bullseye is EOL (Aug 2026); deb.debian.org serves a stale index whose debs 404
+RUN sed -i -e '/debian-security/d' -e 's|http://deb.debian.org/debian|http://archive.debian.org/debian|' /etc/apt/sources.list
 RUN apt-get update && apt-get install -y \
     qemu-system-x86 \
     qemu-utils \
