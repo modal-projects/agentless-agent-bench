@@ -1,6 +1,7 @@
 git config --global user.email "test@example.com"
 git config --global user.name "Test User"
-git clone https://github.com/TheMikeMerrill/personal-site.git
+#git clone https://github.com/TheMikeMerrill/personal-site.git
+git clone --branch master https://github.com/wangsikuan/personal-site.git personal-site
 cd personal-site
 git remote rm origin
 git reset --hard d7d3e4b
